@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Validator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans flex justify-center items-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h1 class="text-3xl font-bold text-center mb-6">Email Validator</h1>
+
+        <!-- Single Email Validation -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold">Validate Single Email</h2>
+            <input id="email-input" type="email" placeholder="Enter email" class="w-full p-2 mt-2 border border-gray-300 rounded-md" />
+            <button id="validate-single" class="w-full bg-blue-500 text-white p-2 mt-4 rounded-md">Validate</button>
+            <p id="single-result" class="mt-4 text-center"></p>
+        </div>
+
+        <!-- Bulk CSV Upload -->
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold">Validate Bulk Emails (CSV/TXT)</h2>
+            <input type="file" id="file-upload" accept=".csv,.txt" class="w-full p-2 mt-2 border border-gray-300 rounded-md" />
+            <button id="upload-bulk" class="w-full bg-green-500 text-white p-2 mt-4 rounded-md">Upload and Validate</button>
+            <p id="bulk-result" class="mt-4 text-center"></p>
+        </div>
+
+        <!-- Download Results -->
+        <div class="mt-6 space-y-2">
+            <h2 class="text-xl font-semibold">Download Results</h2>
+            <div class="flex space-x-2">
+                <button id="download-valid-btn" class="w-1/2 bg-green-500 text-white p-2 rounded-md">Valid Emails</button>
+                <button id="download-invalid-btn" class="w-1/2 bg-red-500 text-white p-2 rounded-md">Invalid Emails</button>
+            </div>
+            <p id="download-stats" class="text-sm text-gray-600 text-center"></p>
+        </div>
+    </div>
+
+    <script>
+        // Define base URL depending on the environment
+        const BASE_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:5000' 
+            : 'https://your-app-name.up.railway.app'; // Replace with your Railway app URL
+
+        // Elements
+        const validateButton = document.getElementById("validate-single");
+        const emailInput = document.getElementById("email-input");
+        const resultDisplay = document.getElementById("single-result");
+        const uploadButton = document.getElementById("upload-bulk");
+        const fileInput = document.getElementById("file-upload");
+        const bulkResultDisplay = document.getElementById("bulk-result");
+        const downloadValidButton = document.getElementById("download-valid-btn");
+        const downloadInvalidButton = document.getElementById("download-invalid-btn");
+        const downloadStats = document.getElementById("download-stats");
+
+        // Single email validation
+        validateButton.addEventListener("click", async () => {
+            const email = emailInput.value;
+            if (!email) {
+                resultDisplay.textContent = "Please enter an email.";
+                resultDisplay.classList.add("text-red-500");
+                return;
+            }
+
+            resultDisplay.innerHTML = "Validating...";
+            resultDisplay.classList.remove("text-red-500", "text-green-500");
+            resultDisplay.classList.add("text-blue-500");
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/validate-email`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email })
+                });
+                const result = await response.json();
+
+                const resultsHTML = `
+                    <div class="space-y-4">
+                        <div class="text-lg ${result.valid ? 'text-green-600' : 'text-red-600'} font-medium">
+                            ${result.valid ? '✓ Valid Email' : '✗ Invalid Email'}
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="font-semibold mb-2">Validation Details:</h3>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Syntax Check:</span>
+                                    <span class="${result.checks.syntax ? 'text-green-600' : 'text-red-600'}">
+                                        ${result.checks.syntax ? '✓' : '✗'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Length Check:</span>
+                                    <span class="${result.checks.length ? 'text-green-600' : 'text-red-600'}">
+                                        ${result.checks.length ? '✓' : '✗'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Character Check:</span>
+                                    <span class="${result.checks.characters ? 'text-green-600' : 'text-red-600'}">
+                                        ${result.checks.characters ? '✓' : '✗'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Domain Check:</span>
+                                    <span class="${result.checks.domain ? 'text-green-600' : 'text-red-600'}">
+                                        ${result.checks.domain ? '✓' : '✗'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>MX Records:</span>
+                                    <span class="${result.checks.mx ? 'text-green-600' : 'text-red-600'}">
+                                        ${result.checks.mx ? '✓' : '✗'}
+                                    </span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>SMTP Check:</span>
+                                    <span class="${result.checks.smtp ? 'text-green-600' : 'text-red-600'}">
+                                        ${result.checks.smtp ? '✓' : '✗'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        ${result.reason ? `
+                        <div class="text-sm ${result.valid ? 'text-green-600' : 'text-red-600'}">
+                            Reason: ${result.reason}
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                resultDisplay.innerHTML = resultsHTML;
+                resultDisplay.classList.remove("text-blue-500");
+
+            } catch (error) {
+                resultDisplay.innerHTML = `
+                    <div class="text-red-600">
+                        Error validating email. Please try again.
+                    </div>
+                `;
+                resultDisplay.classList.remove("text-blue-500");
+            }
+        });
+
+        // Bulk CSV file upload
+        uploadButton.addEventListener("click", async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                bulkResultDisplay.textContent = "Please select a file.";
+                bulkResultDisplay.classList.add("text-red-500");
+                return;
+            }
+            bulkResultDisplay.textContent = "Uploading and validating...";
+            bulkResultDisplay.classList.remove("text-red-500");
+            bulkResultDisplay.classList.add("text-blue-500");
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+                const response = await fetch(`${BASE_URL}/api/upload`, {
+                    method: "POST",
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.success) {
+                    bulkResultDisplay.textContent = `Validation complete! Processing time: ${result.timeElapsed}`;
+                    bulkResultDisplay.classList.remove("text-blue-500");
+                    bulkResultDisplay.classList.add("text-green-500");
+                    downloadStats.textContent = `Total: ${result.totalCount} | Valid: ${result.validCount} | Invalid: ${result.invalidCount}`;
+                } else {
+                    bulkResultDisplay.textContent = "Failed to validate emails.";
+                    bulkResultDisplay.classList.remove("text-blue-500");
+                    bulkResultDisplay.classList.add("text-red-500");
+                }
+            } catch (error) {
+                bulkResultDisplay.textContent = "Error uploading file.";
+                bulkResultDisplay.classList.remove("text-blue-500");
+                bulkResultDisplay.classList.add("text-red-500");
+            }
+        });
+
+        // Add download handlers for valid and invalid emails
+        downloadValidButton.addEventListener("click", () => {
+            window.location.href = `${BASE_URL}/api/download/valid`;
+        });
+
+        downloadInvalidButton.addEventListener("click", () => {
+            window.location.href = `${BASE_URL}/api/download/invalid`;
+        });
+    </script>
+</body>
+</html>
