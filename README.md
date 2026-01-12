@@ -14,4 +14,11 @@ An Email Validator is a simple utility that checks whether an email address is s
 
 🧪 Test-friendly and extensible
 clone:
+Open your cmd/bash/mac 
+git clone: https://github.com/ZaheerAhmadDev/Email-validator.git
+After cloning go to that directory.
+And run npm install.it will install all the dependcies.
+After that npm run dev.it will open on local host.
+
+
 
