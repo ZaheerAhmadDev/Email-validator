@@ -13,3 +13,5 @@ An Email Validator is a simple utility that checks whether an email address is s
 🔧 Easy to integrate into existing projects
 
 🧪 Test-friendly and extensible
+clone:
+
